@@ -58,3 +58,33 @@
         (result (fold transfer-sbtc-to-recipient recipients {sender: sender, count: u0, total: u0, all-ok: true}))
       )
       (asserts! (get all-ok result) ERR-TRANSFER-FAILED)
+
+      ;; Update global stats
+      (var-set total-batches-processed (+ (var-get total-batches-processed) u1))
+      
+      ;; Update sender stats
+      (update-sender-stats sender recipient-count (get total result))
+      
+      (ok {
+        transfers-completed: (get count result),
+        total-amount: (get total result)
+      })
+    )
+  )
+)
+
+;; Generic batch transfer for any SIP-010 token
+;; Note: Due to Clarity limitations with traits in fold, this uses a simpler approach
+;; For production, consider separate functions per token or use batch-transfer-sbtc directly
+(define-public (batch-transfer-generic
+  (token <sip-010-trait>)
+  (recipients (list 200 {to: principal, amount: uint})))
+  (let
+    (
+      (sender tx-sender)
+      (recipient-count (len recipients))
+    )
+    ;; Validate list is not empty
+    (asserts! (> recipient-count u0) ERR-EMPTY-LIST)
+    ;; Validate not too many recipients
+    (asserts! (<= recipient-count MAX-RECIPIENTS) ERR-TOO-MANY-RECIPIENTS)
