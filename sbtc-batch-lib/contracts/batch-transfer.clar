@@ -211,3 +211,43 @@
     total-batches: (var-get total-batches-processed)
   }
 )
+
+;; ============================================
+;; TEST HELPER FUNCTIONS
+;; ============================================
+;; These functions are for local testing with mock tokens
+;; Production code should use batch-transfer-sbtc
+
+;; Batch transfer mock-sbtc to multiple recipients (FOR TESTING ONLY)
+(define-public (batch-transfer-mock
+  (recipients (list 200 {to: principal, amount: uint})))
+  (let
+    (
+      (sender tx-sender)
+      (recipient-count (len recipients))
+    )
+    ;; Validate list is not empty
+    (asserts! (> recipient-count u0) ERR-EMPTY-LIST)
+    ;; Validate not too many recipients
+    (asserts! (<= recipient-count MAX-RECIPIENTS) ERR-TOO-MANY-RECIPIENTS)
+    
+    ;; Process transfers using fold
+    (let
+      (
+        (result (fold transfer-mock-to-recipient recipients {sender: sender, count: u0, total: u0, all-ok: true}))
+      )
+      (asserts! (get all-ok result) ERR-TRANSFER-FAILED)
+      
+      ;; Update global stats
+      (var-set total-batches-processed (+ (var-get total-batches-processed) u1))
+      
+      ;; Update sender stats
+      (update-sender-stats sender recipient-count (get total result))
+      
+      (ok {
+        transfers-completed: (get count result),
+        total-amount: (get total result)
+      })
+    )
+  )
+)
