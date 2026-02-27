@@ -33,3 +33,28 @@
   total-transfers: uint,
   total-amount: uint
 })
+
+;; ============================================
+;; PUBLIC FUNCTIONS
+;; ============================================
+
+;; Batch transfer sBTC to multiple recipients
+;; Uses the sBTC contract (Clarinet auto-remaps for different networks)
+(define-public (batch-transfer-sbtc
+  (recipients (list 200 {to: principal, amount: uint})))
+  (let
+    (
+      (sender tx-sender)
+      (recipient-count (len recipients))
+    )
+    ;; Validate list is not empty
+    (asserts! (> recipient-count u0) ERR-EMPTY-LIST)
+    ;; Validate not too many recipients
+    (asserts! (<= recipient-count MAX-RECIPIENTS) ERR-TOO-MANY-RECIPIENTS)
+    
+    ;; Process transfers using fold
+    (let
+      (
+        (result (fold transfer-sbtc-to-recipient recipients {sender: sender, count: u0, total: u0, all-ok: true}))
+      )
+      (asserts! (get all-ok result) ERR-TRANSFER-FAILED)
