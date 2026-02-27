@@ -143,3 +143,39 @@
     context
   )
 )
+
+;; Update sender statistics
+(define-private (update-sender-stats (sender principal) (transfer-count uint) (amount uint))
+  (match (map-get? sender-stats sender)
+    existing-stats
+    (map-set sender-stats sender {
+      total-batches: (+ (get total-batches existing-stats) u1),
+      total-transfers: (+ (get total-transfers existing-stats) transfer-count),
+      total-amount: (+ (get total-amount existing-stats) amount)
+    })
+    (map-set sender-stats sender {
+      total-batches: u1,
+      total-transfers: transfer-count,
+      total-amount: amount
+    })
+  )
+)
+
+;; ============================================
+;; READ-ONLY FUNCTIONS
+;; ============================================
+
+;; Get total batches processed by this contract
+(define-read-only (get-total-batches)
+  (var-get total-batches-processed)
+)
+
+;; Get statistics for a specific sender
+(define-read-only (get-sender-stats (sender principal))
+  (map-get? sender-stats sender)
+)
+
+;; Calculate total amount for a batch (for fee estimation / preview)
+(define-read-only (calculate-batch-total (recipients (list 200 {to: principal, amount: uint})))
+  (fold add-amounts recipients u0)
+)
