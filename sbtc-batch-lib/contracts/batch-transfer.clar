@@ -179,3 +179,35 @@
 (define-read-only (calculate-batch-total (recipients (list 200 {to: principal, amount: uint})))
   (fold add-amounts recipients u0)
 )
+
+;; Add amounts helper
+(define-private (add-amounts (recipient {to: principal, amount: uint}) (total uint))
+  (+ total (get amount recipient))
+)
+
+;; Validate a batch before execution
+(define-read-only (validate-batch (recipients (list 200 {to: principal, amount: uint})))
+  (let
+    (
+      (count (len recipients))
+      (total (fold add-amounts recipients u0))
+    )
+    (if (is-eq count u0)
+      {valid: false, error: u1, recipient-count: u0, total-amount: u0} ;; Empty list
+      (if (> count MAX-RECIPIENTS)
+        {valid: false, error: u2, recipient-count: count, total-amount: total} ;; Too many recipients
+        {valid: true, error: u0, recipient-count: count, total-amount: total}
+      )
+    )
+  )
+)
+
+;; Get contract info
+(define-read-only (get-contract-info)
+  {
+    name: "sBTC Batch Transfer Library",
+    version: u1,
+    max-recipients: MAX-RECIPIENTS,
+    total-batches: (var-get total-batches-processed)
+  }
+)
