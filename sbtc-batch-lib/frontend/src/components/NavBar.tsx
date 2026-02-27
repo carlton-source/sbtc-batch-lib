@@ -3,12 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Layers, Wallet, Menu, LayoutGrid, Clock, BarChart3,
-  CheckCircle2, ChevronDown, Copy, LogOut,
+  CheckCircle2, ChevronDown, Copy, LogOut, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BtcTicker } from "@/components/BtcTicker";
 import { StxTicker } from "@/components/StxTicker";
-import { WalletModal } from "@/components/WalletModal";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
 import {
@@ -42,8 +41,19 @@ function truncateAddr(addr: string | null | undefined) {
 export function NavBar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const { stxAddress, walletName, disconnect } = useWallet();
+  const { stxAddress, walletName, disconnect, connectWallet, isConnecting } = useWallet();
+
+  const handleConnect = async () => {
+    try {
+      await connectWallet();
+      toast.success("Wallet connected");
+    } catch (error: any) {
+      // User cancelled or error
+      if (!error?.message?.includes('cancel')) {
+        toast.error("Failed to connect wallet");
+      }
+    }
+  };
 
   const handleCopy = () => {
     if (!stxAddress) return;
@@ -100,11 +110,16 @@ export function NavBar() {
       size="sm"
       className="gap-2 bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 hover:border-primary/60 transition-all duration-200 hover:shadow-violet-glow"
       variant="outline"
-      onClick={() => setModalOpen(true)}
+      onClick={handleConnect}
+      disabled={isConnecting}
     >
-      <Wallet className="h-4 w-4" />
-      <span className="hidden sm:inline">Connect Wallet</span>
-      <span className="sm:hidden">Connect</span>
+      {isConnecting ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Wallet className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
+      <span className="sm:hidden">{isConnecting ? "..." : "Connect"}</span>
     </Button>
   );
 
@@ -241,10 +256,15 @@ export function NavBar() {
                     <Button
                       className="w-full gap-2 bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 hover:border-primary/60 transition-all duration-200"
                       variant="outline"
-                      onClick={() => { setOpen(false); setModalOpen(true); }}
+                      onClick={() => { setOpen(false); handleConnect(); }}
+                      disabled={isConnecting}
                     >
-                      <Wallet className="h-4 w-4" />
-                      Connect Wallet
+                      {isConnecting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wallet className="h-4 w-4" />
+                      )}
+                      {isConnecting ? "Connecting..." : "Connect Wallet"}
                     </Button>
                   )}
                 </div>
@@ -253,8 +273,6 @@ export function NavBar() {
           </div>
         </div>
       </header>
-
-      <WalletModal open={modalOpen} onOpenChange={setModalOpen} />
     </>
   );
 }
