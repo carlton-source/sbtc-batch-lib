@@ -425,10 +425,20 @@ export default function Index() {
   const handleConnect = async () => {
     try {
       await connectWallet();
-      toast.success("Wallet connected");
+      toast.success("Wallet connected", {
+        description: "Connected to Stacks Testnet"
+      });
     } catch (error: any) {
-      if (!error?.message?.includes('cancel')) {
-        toast.error("Failed to connect wallet");
+      const message = error?.message || '';
+      if (message.includes('testnet') || message.includes('switch')) {
+        toast.error("Testnet Required", {
+          description: "Please switch your wallet to Testnet mode and try again.",
+          duration: 6000,
+        });
+      } else if (!message.includes('cancel') && !message.includes('Cancel')) {
+        toast.error("Connection failed", {
+          description: message || "Please try again"
+        });
       }
     }
   };

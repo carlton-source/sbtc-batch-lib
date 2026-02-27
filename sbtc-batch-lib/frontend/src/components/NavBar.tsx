@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { BtcTicker } from "@/components/BtcTicker";
 import { StxTicker } from "@/components/StxTicker";
+import { TestnetIndicator, TestnetBanner } from "@/components/TestnetBanner";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "sonner";
 import {
@@ -46,11 +47,21 @@ export function NavBar() {
   const handleConnect = async () => {
     try {
       await connectWallet();
-      toast.success("Wallet connected");
+      toast.success("Wallet connected", {
+        description: "Connected to Stacks Testnet"
+      });
     } catch (error: any) {
-      // User cancelled or error
-      if (!error?.message?.includes('cancel')) {
-        toast.error("Failed to connect wallet");
+      const message = error?.message || '';
+      // Check if it's a testnet requirement error
+      if (message.includes('testnet') || message.includes('switch')) {
+        toast.error("Testnet Required", {
+          description: "Please switch your wallet to Testnet mode and try again.",
+          duration: 6000,
+        });
+      } else if (!message.includes('cancel') && !message.includes('Cancel')) {
+        toast.error("Connection failed", {
+          description: message || "Please try again"
+        });
       }
     }
   };
@@ -161,6 +172,9 @@ export function NavBar() {
               <StxTicker />
               <BtcTicker />
             </div>
+
+            {/* Testnet indicator */}
+            <TestnetIndicator className="hidden sm:flex" />
 
             {stxAddress ? ConnectedButton : DisconnectedButton}
 
@@ -273,6 +287,9 @@ export function NavBar() {
           </div>
         </div>
       </header>
+
+      {/* Testnet notification banner */}
+      <TestnetBanner />
     </>
   );
 }
