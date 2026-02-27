@@ -28,6 +28,10 @@ interface WalletContextValue {
   isConnecting: boolean;
   connectingWallet: WalletName | null;
   
+  // Network info
+  network: 'testnet' | 'mainnet';
+  isTestnet: boolean;
+  
   // Actions
   connectWallet: (preferredWallet?: WalletName) => Promise<void>;
   disconnectWallet: () => void;
@@ -46,6 +50,19 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 function detectWalletName(): WalletName {
   // This is a heuristic - the actual provider detection happens at connect time
   return 'Leather';
+}
+
+// Network configuration
+export const CURRENT_NETWORK: 'testnet' | 'mainnet' = 'testnet';
+
+// Helper to check if address is testnet (starts with ST)
+function isTestnetAddress(address: string): boolean {
+  return address.startsWith('ST') || address.startsWith('SN');
+}
+
+// Helper to check if address is mainnet (starts with SP)
+function isMainnetAddress(address: string): boolean {
+  return address.startsWith('SP') || address.startsWith('SM');
 }
 
 // Helper to find STX address from addresses array
@@ -115,10 +132,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const session = loadWalletSession();
         
         if (session && session.addresses.length > 0) {
-          // Also verify @stacks/connect thinks we're connected
+          // Verify @stacks/connect thinks we're connected
           if (stacksIsConnected()) {
-            setAddresses(session.addresses);
-            setWalletName(session.walletName);
+            // Validate testnet addresses on restore
+            const stxAddr = findStxAddress(session.addresses);
+            if (stxAddr && CURRENT_NETWORK === 'testnet' && !isTestnetAddress(stxAddr)) {
+              // Mainnet address found but we're on testnet - clear session
+              console.warn('Stored session has mainnet address, clearing for testnet');
+              stacksDisconnect();
+              clearWalletSession();
+            } else {
+              setAddresses(session.addresses);
+              setWalletName(session.walletName);
+            }
           } else {
             // Stacks connect says not connected, clear our session too
             clearWalletSession();
@@ -167,6 +193,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           address: addr.address,
           publicKey: addr.publicKey,
         }));
+
+        // Find the STX address to validate network
+        const stxAddr = findStxAddress(walletAddresses);
+        
+        // Validate testnet requirement
+        if (CURRENT_NETWORK === 'testnet' && stxAddr) {
+          if (isMainnetAddress(stxAddr)) {
+            // User connected with mainnet - disconnect and throw error
+            stacksDisconnect();
+            throw new Error(
+              'Please switch to testnet in your wallet. This app is currently running on testnet only. ' +
+              'In Leather: Settings → Network → Testnet. In Xverse: Settings → Network → Testnet.'
+            );
+          }
+        }
 
         setAddresses(walletAddresses);
         
@@ -223,6 +264,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         isConnected,
         isConnecting,
         connectingWallet,
+        network: CURRENT_NETWORK,
+        isTestnet: CURRENT_NETWORK === 'testnet',
         connectWallet,
         disconnectWallet,
         // Legacy compatibility
