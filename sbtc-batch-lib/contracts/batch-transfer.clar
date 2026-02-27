@@ -58,7 +58,7 @@
         (result (fold transfer-sbtc-to-recipient recipients {sender: sender, count: u0, total: u0, all-ok: true}))
       )
       (asserts! (get all-ok result) ERR-TRANSFER-FAILED)
-
+      
       ;; Update global stats
       (var-set total-batches-processed (+ (var-get total-batches-processed) u1))
       
@@ -88,7 +88,7 @@
     (asserts! (> recipient-count u0) ERR-EMPTY-LIST)
     ;; Validate not too many recipients
     (asserts! (<= recipient-count MAX-RECIPIENTS) ERR-TOO-MANY-RECIPIENTS)
-
+    
     ;; For generic token, process first few transfers directly
     ;; This is a simplified version - production would use contract-specific batch functions
     (let
@@ -249,5 +249,35 @@
         total-amount: (get total result)
       })
     )
+  )
+)
+
+;; Helper for mock token batch transfer
+(define-private (transfer-mock-to-recipient
+  (recipient {to: principal, amount: uint})
+  (context {sender: principal, count: uint, total: uint, all-ok: bool}))
+  (if (get all-ok context)
+    (let
+      (
+        (amount (get amount recipient))
+        (to-address (get to recipient))
+      )
+      (match (contract-call? .mock-sbtc transfer 
+              amount 
+              (get sender context) 
+              to-address 
+              none)
+        success
+        {
+          sender: (get sender context),
+          count: (+ (get count context) u1),
+          total: (+ (get total context) amount),
+          all-ok: true
+        }
+        error
+        (merge context {all-ok: false})
+      )
+    )
+    context
   )
 )
