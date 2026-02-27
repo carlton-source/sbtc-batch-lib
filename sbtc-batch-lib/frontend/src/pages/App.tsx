@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavBar } from "@/components/NavBar";
 import { useWallet } from "@/contexts/WalletContext";
-import { WalletModal } from "@/components/WalletModal";
 import { BatchSummaryCard } from "@/components/batchpay/BatchSummaryCard";
 import { AddressInput } from "@/components/batchpay/AddressInput";
 import { AmountInput } from "@/components/batchpay/AmountInput";
@@ -10,8 +9,9 @@ import { ValidationSummary } from "@/components/batchpay/ValidationSummary";
 import { CSVInput } from "@/components/batchpay/CSVInput";
 import { ConfirmBatchModal } from "@/components/batchpay/ConfirmBatchModal";
 import { OverwriteConfirmModal } from "@/components/batchpay/OverwriteConfirmModal";
-import { TransactionProgressModal } from "@/components/batchpay/TransactionProgressModal";
+import { TransactionProgressModal, type RecipientForTx } from "@/components/batchpay/TransactionProgressModal";
 import { SaveTemplateModal } from "@/components/batchpay/SaveTemplateModal";
+import { useContract } from "@/hooks/useContract";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -98,8 +98,7 @@ const DEMO_RECIPIENTS: Recipient[] = [
 ];
 
 export default function AppPage() {
-  const { stxAddress } = useWallet();
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const { stxAddress, connectWallet, isConnecting } = useWallet();
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -154,6 +153,35 @@ export default function AppPage() {
     if (r.unit === "BTC" || r.unit === "sBTC") return acc + n * SATS_PER_BTC;
     return acc;
   }, 0);
+
+  // Contract integration for real batch execution
+  const contract = useContract();
+
+  // Convert recipients to format needed for contract execution
+  const getRecipientsForTx = useCallback((): RecipientForTx[] => {
+    return recipients
+      .filter(r => r.status === "valid")
+      .map(r => {
+        const n = parseFloat(r.amount) || 0;
+        let amountInSats: number;
+        if (r.unit === "sats") {
+          amountInSats = Math.floor(n);
+        } else {
+          // BTC or sBTC -> convert to sats
+          amountInSats = Math.floor(n * SATS_PER_BTC);
+        }
+        return {
+          address: r.address,
+          amount: amountInSats,
+        };
+      });
+  }, [recipients]);
+
+  // Execute batch transfer via the smart contract
+  const handleExecuteBatch = useCallback(async (recs: RecipientForTx[]): Promise<{ txId: string; success: boolean }> => {
+    const result = await contract.executeBatch(recs, true); // true = use mock tokens for testnet
+    return result;
+  }, [contract]);
 
   const totalPages = Math.ceil(recipients.length / PAGE_SIZE);
   const visibleRecipients = recipients.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -695,10 +723,11 @@ export default function AppPage() {
                   {!stxAddress ? (
                     <Button
                       className="gap-2 bg-primary hover:bg-primary/90 font-semibold"
-                      onClick={() => setWalletModalOpen(true)}
+                      onClick={() => connectWallet()}
+                      disabled={isConnecting}
                     >
                       <Zap className="h-4 w-4" />
-                      Connect Wallet to Continue
+                      {isConnecting ? "Connecting..." : "Connect Wallet to Continue"}
                     </Button>
                   ) : (
                     <Button
@@ -767,7 +796,6 @@ export default function AppPage() {
       </Sheet>
 
       {/* Modals */}
-      <WalletModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
       <ConfirmBatchModal
         isOpen={confirmOpen}
         recipients={recipients}
@@ -777,6 +805,9 @@ export default function AppPage() {
       <TransactionProgressModal
         isOpen={progressOpen}
         onClose={handleProgressClose}
+        recipients={getRecipientsForTx()}
+        onExecute={handleExecuteBatch}
+        useMockTokens={true}
       />
       <SaveTemplateModal
         isOpen={saveModalOpen}
