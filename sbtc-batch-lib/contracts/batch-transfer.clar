@@ -88,3 +88,58 @@
     (asserts! (> recipient-count u0) ERR-EMPTY-LIST)
     ;; Validate not too many recipients
     (asserts! (<= recipient-count MAX-RECIPIENTS) ERR-TOO-MANY-RECIPIENTS)
+
+    ;; For generic token, process first few transfers directly
+    ;; This is a simplified version - production would use contract-specific batch functions
+    (let
+      (
+        (total (fold add-amounts recipients u0))
+      )
+      ;; Update global stats
+      (var-set total-batches-processed (+ (var-get total-batches-processed) u1))
+      
+      ;; Return validation info - actual transfers handled by frontend calling individual transfers
+      ;; or by using batch-transfer-sbtc for sBTC specifically
+      (ok {
+        recipient-count: recipient-count,
+        total-amount: total,
+        note: "Use batch-transfer-sbtc for sBTC or call transfers individually"
+      })
+    )
+  )
+)
+
+;; ============================================
+;; PRIVATE FUNCTIONS
+;; ============================================
+
+;; Helper for sBTC batch transfer - processes one recipient
+(define-private (transfer-sbtc-to-recipient
+  (recipient {to: principal, amount: uint})
+  (context {sender: principal, count: uint, total: uint, all-ok: bool}))
+  (if (get all-ok context)
+    (let
+      (
+        (amount (get amount recipient))
+        (to-address (get to recipient))
+      )
+      ;; sBTC contract address - Clarinet auto-remaps for testnet/mainnet
+      (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+              amount 
+              (get sender context) 
+              to-address 
+              none)
+        success
+        {
+          sender: (get sender context),
+          count: (+ (get count context) u1),
+          total: (+ (get total context) amount),
+          all-ok: true
+        }
+        error
+        (merge context {all-ok: false})
+      )
+    )
+    context
+  )
+)
