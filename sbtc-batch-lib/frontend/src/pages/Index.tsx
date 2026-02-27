@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { NavBar } from "@/components/NavBar";
-import { WalletModal } from "@/components/WalletModal";
+import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Users, ShieldCheck, TrendingUp, Layers, CreditCard, Building2, Rocket, ChevronRight, FileText, Upload, CheckCircle2, Wallet } from "lucide-react";
+import { ArrowRight, Zap, Users, ShieldCheck, TrendingUp, Layers, CreditCard, Building2, Rocket, ChevronRight, FileText, Upload, CheckCircle2, Wallet, Loader2 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -420,7 +420,28 @@ export default function Index() {
   const [howRef, howInView] = useInView();
   const [useCasesRef, useCasesInView] = useInView();
   const [ctaRef, ctaInView] = useInView();
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const { connectWallet, isConnecting } = useWallet();
+
+  const handleConnect = async () => {
+    try {
+      await connectWallet();
+      toast.success("Wallet connected", {
+        description: "Connected to Stacks Testnet"
+      });
+    } catch (error: any) {
+      const message = error?.message || '';
+      if (message.includes('testnet') || message.includes('switch')) {
+        toast.error("Testnet Required", {
+          description: "Please switch your wallet to Testnet mode and try again.",
+          duration: 6000,
+        });
+      } else if (!message.includes('cancel') && !message.includes('Cancel')) {
+        toast.error("Connection failed", {
+          description: message || "Please try again"
+        });
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden relative">
@@ -807,10 +828,15 @@ export default function Index() {
                 size="sm"
                 variant="outline"
                 className="gap-2 w-fit bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 hover:border-primary/60 transition-all"
-                onClick={() => setWalletModalOpen(true)}
+                onClick={handleConnect}
+                disabled={isConnecting}
               >
-                <Wallet className="h-3.5 w-3.5" />
-                Connect Wallet
+                {isConnecting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wallet className="h-3.5 w-3.5" />
+                )}
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
               </Button>
             </div>
           </div>
@@ -824,8 +850,6 @@ export default function Index() {
           </div>
         </div>
       </footer>
-
-      <WalletModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
     </div>
   );
 }

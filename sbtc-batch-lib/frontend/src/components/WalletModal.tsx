@@ -1,7 +1,7 @@
 import { Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useWallet } from "@/contexts/WalletContext";
+import { useWallet, type WalletName } from "@/contexts/WalletContext";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ interface WalletModalProps {
 
 const wallets = [
   {
-    name: "Leather" as const,
+    name: "Leather" as WalletName,
     tagline: "Most popular",
     color: "hsl(43 96% 56%)", // amber/gold
     icon: (
@@ -33,7 +33,7 @@ const wallets = [
     ),
   },
   {
-    name: "Xverse" as const,
+    name: "Xverse" as WalletName,
     tagline: "Mobile friendly",
     color: "hsl(25 95% 53%)", // orange
     icon: (
@@ -50,16 +50,40 @@ const wallets = [
 ];
 
 export function WalletModal({ open, onOpenChange }: WalletModalProps) {
-  const { connectAs, isConnecting, connectingWallet, stxAddress } = useWallet();
+  const { connectWallet, isConnecting, connectingWallet, truncateAddress } = useWallet();
 
-  const handleConnect = async (walletName: "Leather" | "Xverse") => {
-    await connectAs(walletName);
-    const addr = walletName === "Leather"
-      ? "SP2MXJQJ3A6WFG9HF3CKR1B4NK8VTZ2YPDSF"
-      : "SP3FG7A1KMNQ5TZ9PY8B2JR4HVX6WCDNE5RT4";
-    const truncated = addr.slice(0, 6) + "…" + addr.slice(-4);
-    onOpenChange(false);
-    toast.success(`Connected as ${truncated}`);
+  const handleConnect = async (walletName: WalletName) => {
+    try {
+      await connectWallet(walletName);
+      onOpenChange(false);
+      toast.success("Wallet connected!", {
+        description: "You can now create and execute batch transfers.",
+      });
+    } catch (error: any) {
+      // User cancelled or error
+      if (error?.message?.includes('cancelled') || error?.message?.includes('rejected')) {
+        toast.info("Connection cancelled");
+      } else {
+        toast.error("Connection failed", {
+          description: error?.message || "Please try again",
+        });
+      }
+    }
+  };
+
+  // Also allow connecting without preference (shows wallet selector)
+  const handleConnectAny = async () => {
+    try {
+      await connectWallet();
+      onOpenChange(false);
+      toast.success("Wallet connected!");
+    } catch (error: any) {
+      if (!error?.message?.includes('cancelled')) {
+        toast.error("Connection failed", {
+          description: error?.message || "Please try again",
+        });
+      }
+    }
   };
 
   return (
@@ -109,6 +133,26 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
             );
           })}
         </div>
+
+        {/* Option to show all available wallets */}
+        <button
+          onClick={handleConnectAny}
+          disabled={isConnecting}
+          className={cn(
+            "w-full py-2.5 px-4 rounded-lg border border-border/50 text-sm",
+            "text-muted-foreground hover:text-foreground hover:bg-muted/30",
+            "transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+        >
+          {isConnecting && !connectingWallet ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting...
+            </span>
+          ) : (
+            "Show all wallets"
+          )}
+        </button>
 
         <p className="text-center text-xs text-muted-foreground pt-1">
           New to Stacks?{" "}

@@ -3,12 +3,12 @@ import { useCoinPrice } from "@/hooks/useBtcPrice";
 import { cn } from "@/lib/utils";
 
 export function StxTicker() {
-  const { price, change24h, isLoading, isError } = useCoinPrice("blockstack");
+  const { price, change24h, isLoading, isError, isStale } = useCoinPrice("blockstack");
 
   const isPositive = change24h >= 0;
   const hasData = price > 0;
 
-  if (isLoading) {
+  if (isLoading && !hasData) {
     return (
       <div className="rounded-lg border border-border/50 bg-surface-2/50 px-3 py-1.5">
         <div className="h-4 w-24 animate-pulse rounded bg-surface-3" />
@@ -17,12 +17,17 @@ export function StxTicker() {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-surface-2/50 px-3 py-1.5">
+    <div 
+      className="flex items-center gap-2 rounded-lg border border-border/50 bg-surface-2/50 px-3 py-1.5"
+      title={isStale ? "Price may be outdated" : undefined}
+    >
       {/* Live dot */}
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full flex-shrink-0",
-          isError ? "bg-muted" : "bg-emerald animate-pulse"
+          isError && !hasData ? "bg-muted" : 
+          isStale ? "bg-amber-500" : 
+          "bg-emerald animate-pulse"
         )}
       />
 
@@ -37,7 +42,7 @@ export function StxTicker() {
           <span
             className={cn(
               "font-mono text-xs font-semibold",
-              isError ? "text-muted-foreground" : "text-foreground"
+              isStale ? "text-muted-foreground" : "text-foreground"
             )}
           >
             ${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -47,7 +52,7 @@ export function StxTicker() {
           <span
             className={cn(
               "flex items-center gap-0.5 text-xs font-medium",
-              isError
+              isStale
                 ? "text-muted-foreground"
                 : isPositive
                 ? "text-emerald"
@@ -64,9 +69,9 @@ export function StxTicker() {
         </>
       )}
 
-      {/* Error state with no stale data */}
+      {/* Error state with no data at all */}
       {isError && !hasData && (
-        <span className="text-xs text-muted-foreground">Unavailable</span>
+        <span className="text-xs text-muted-foreground">—</span>
       )}
     </div>
   );

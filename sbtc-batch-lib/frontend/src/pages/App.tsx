@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavBar } from "@/components/NavBar";
 import { useWallet } from "@/contexts/WalletContext";
-import { WalletModal } from "@/components/WalletModal";
 import { BatchSummaryCard } from "@/components/batchpay/BatchSummaryCard";
 import { AddressInput } from "@/components/batchpay/AddressInput";
 import { AmountInput } from "@/components/batchpay/AmountInput";
@@ -10,8 +9,9 @@ import { ValidationSummary } from "@/components/batchpay/ValidationSummary";
 import { CSVInput } from "@/components/batchpay/CSVInput";
 import { ConfirmBatchModal } from "@/components/batchpay/ConfirmBatchModal";
 import { OverwriteConfirmModal } from "@/components/batchpay/OverwriteConfirmModal";
-import { TransactionProgressModal } from "@/components/batchpay/TransactionProgressModal";
+import { TransactionProgressModal, type RecipientForTx } from "@/components/batchpay/TransactionProgressModal";
 import { SaveTemplateModal } from "@/components/batchpay/SaveTemplateModal";
+import { useContract } from "@/hooks/useContract";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -44,12 +44,12 @@ const BATCH_TEMPLATES: BatchTemplate[] = [
     icon: Users,
     color: "text-violet-400 bg-violet-500/10 border-violet-500/20",
     recipients: [
-      { address: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ", amount: "1200000", unit: "sats" },
-      { address: "SP3GWX3NE58KJET25ZZ6D193D4D3EMXT5E8KXNJV", amount: "950000",  unit: "sats" },
-      { address: "SP1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8K", amount: "800000",  unit: "sats" },
-      { address: "SP2QXJDSWYFGT9022M5TEZZNKQGVYCNH5D2GQBPH", amount: "750000",  unit: "sats" },
-      { address: "SP3NFTHTNKNJRFB4NPRQVSRD6THVSZ8YZ36VBPM1", amount: "600000",  unit: "sats" },
-      { address: "SP1MXSZF4NFC9JQ55NZXHME0PC3FKXB28MX6ZKG2", amount: "500000",  unit: "sats" },
+      { address: "ST2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ", amount: "1200000", unit: "sats" },
+      { address: "ST3GWX3NE58KJET25ZZ6D193D4D3EMXT5E8KXNJV", amount: "950000",  unit: "sats" },
+      { address: "ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8K", amount: "800000",  unit: "sats" },
+      { address: "ST2QXJDSWYFGT9022M5TEZZNKQGVYCNH5D2GQBPH", amount: "750000",  unit: "sats" },
+      { address: "ST3NFTHTNKNJRFB4NPRQVSRD6THVSZ8YZ36VBPM1", amount: "600000",  unit: "sats" },
+      { address: "ST1MXSZF4NFC9JQ55NZXHME0PC3FKXB28MX6ZKG2", amount: "500000",  unit: "sats" },
     ],
   },
   {
@@ -59,14 +59,14 @@ const BATCH_TEMPLATES: BatchTemplate[] = [
     icon: Zap,
     color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
     recipients: [
-      { address: "SP1WN90HKT0E1FWCJT9JFPMC8YP7XGHA0GBW16BX", amount: "100000", unit: "sats" },
-      { address: "SP2MN84Y4VP9N7H64ZDVQE5KVX4XRJB8BQBVBXJK", amount: "100000", unit: "sats" },
-      { address: "SP3KDQZP3NTKZAKJ1NRQHX0FJCQ46YQQZQJX9MRT", amount: "100000", unit: "sats" },
-      { address: "SP1P72Z3704VMT3DMHPP2CB8TAAT8GZSBF5RA2R0", amount: "100000", unit: "sats" },
-      { address: "SP2C2YFP12AJZB4MABJBAJ85B6DCF7NPHQJD3GZ3", amount: "100000", unit: "sats" },
-      { address: "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5XQ2", amount: "100000", unit: "sats" },
-      { address: "SP1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A", amount: "100000", unit: "sats" },
-      { address: "SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9", amount: "100000", unit: "sats" },
+      { address: "ST1WN90HKT0E1FWCJT9JFPMC8YP7XGHA0GBW16BX", amount: "100000", unit: "sats" },
+      { address: "ST2MN84Y4VP9N7H64ZDVQE5KVX4XRJB8BQBVBXJK", amount: "100000", unit: "sats" },
+      { address: "ST3KDQZP3NTKZAKJ1NRQHX0FJCQ46YQQZQJX9MRT", amount: "100000", unit: "sats" },
+      { address: "ST1P72Z3704VMT3DMHPP2CB8TAAT8GZSBF5RA2R0", amount: "100000", unit: "sats" },
+      { address: "ST2C2YFP12AJZB4MABJBAJ85B6DCF7NPHQJD3GZ3", amount: "100000", unit: "sats" },
+      { address: "ST3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5XQ2", amount: "100000", unit: "sats" },
+      { address: "ST1Y5YSTAHZ88XYK1VPDH24GY0HPX5J4JECTMY4A", amount: "100000", unit: "sats" },
+      { address: "ST2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9", amount: "100000", unit: "sats" },
     ],
   },
   {
@@ -76,30 +76,30 @@ const BATCH_TEMPLATES: BatchTemplate[] = [
     icon: Building2,
     color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     recipients: [
-      { address: "SP3D03GMKH86AXJCZJHFNX5C8ZX9KQJR2YPAHQZE", amount: "5000000", unit: "sats" },
-      { address: "SP1QK1AZ24R132C0D84243RP9K1R7FEAP1FQZFB5G", amount: "3000000", unit: "sats" },
-      { address: "SP2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QQ97", amount: "1500000", unit: "sats" },
-      { address: "SP3J3RJTX9TFNVTT7GZP6R73WPBSDN9BNZM3YV5F", amount: "500000",  unit: "sats" },
+      { address: "ST3D03GMKH86AXJCZJHFNX5C8ZX9KQJR2YPAHQZE", amount: "5000000", unit: "sats" },
+      { address: "ST1QK1AZ24R132C0D84243RP9K1R7FEAP1FQZFB5G", amount: "3000000", unit: "sats" },
+      { address: "ST2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QQ97", amount: "1500000", unit: "sats" },
+      { address: "ST3J3RJTX9TFNVTT7GZP6R73WPBSDN9BNZM3YV5F", amount: "500000",  unit: "sats" },
     ],
   },
 ];
 
 function validateAddress(addr: string): boolean {
-  return /^(1|3|bc1|BC1|SP|SM)[a-zA-HJ-NP-Z0-9]{8,}$/.test(addr.trim());
+  // Accept testnet (ST, SN), mainnet (SP, SM), and Bitcoin addresses
+  return /^(1|3|bc1|BC1|SP|SM|ST|SN)[a-zA-HJ-NP-Z0-9]{8,}$/.test(addr.trim());
 }
 
 const PAGE_SIZE = 25;
 
-// Sample data for demo
+// Sample data for demo (testnet addresses)
 const DEMO_RECIPIENTS: Recipient[] = [
-  { id: "1", address: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ", amount: "500000", unit: "sats", status: "valid" },
-  { id: "2", address: "SP3GWX3NE58KJET25ZZ6D193D4D3EMXT5E8KXNJV", amount: "250000", unit: "sats", status: "valid" },
-  { id: "3", address: "SP1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8K", amount: "750000", unit: "sats", status: "valid" },
+  { id: "1", address: "ST2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ", amount: "500000", unit: "sats", status: "valid" },
+  { id: "2", address: "ST3GWX3NE58KJET25ZZ6D193D4D3EMXT5E8KXNJV", amount: "250000", unit: "sats", status: "valid" },
+  { id: "3", address: "ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8K", amount: "750000", unit: "sats", status: "valid" },
 ];
 
 export default function AppPage() {
-  const { stxAddress } = useWallet();
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const { stxAddress, connectWallet, isConnecting } = useWallet();
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
@@ -154,6 +154,57 @@ export default function AppPage() {
     if (r.unit === "BTC" || r.unit === "sBTC") return acc + n * SATS_PER_BTC;
     return acc;
   }, 0);
+
+  // Handle wallet connection with testnet validation
+  const handleConnect = useCallback(async () => {
+    try {
+      await connectWallet();
+      toast.success("Wallet connected", {
+        description: "Connected to Stacks Testnet"
+      });
+    } catch (error: any) {
+      const message = error?.message || '';
+      if (message.includes('testnet') || message.includes('switch')) {
+        toast.error("Testnet Required", {
+          description: "Please switch your wallet to Testnet mode and try again.",
+          duration: 6000,
+        });
+      } else if (!message.includes('cancel') && !message.includes('Cancel')) {
+        toast.error("Connection failed", {
+          description: message || "Please try again"
+        });
+      }
+    }
+  }, [connectWallet]);
+
+  // Contract integration for real batch execution
+  const contract = useContract();
+
+  // Convert recipients to format needed for contract execution
+  const getRecipientsForTx = useCallback((): RecipientForTx[] => {
+    return recipients
+      .filter(r => r.status === "valid")
+      .map(r => {
+        const n = parseFloat(r.amount) || 0;
+        let amountInSats: number;
+        if (r.unit === "sats") {
+          amountInSats = Math.floor(n);
+        } else {
+          // BTC or sBTC -> convert to sats
+          amountInSats = Math.floor(n * SATS_PER_BTC);
+        }
+        return {
+          address: r.address,
+          amount: amountInSats,
+        };
+      });
+  }, [recipients]);
+
+  // Execute batch transfer via the smart contract
+  const handleExecuteBatch = useCallback(async (recs: RecipientForTx[]): Promise<{ txId: string; success: boolean }> => {
+    const result = await contract.executeBatch(recs, true); // true = use mock tokens for testnet
+    return result;
+  }, [contract]);
 
   const totalPages = Math.ceil(recipients.length / PAGE_SIZE);
   const visibleRecipients = recipients.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -695,10 +746,11 @@ export default function AppPage() {
                   {!stxAddress ? (
                     <Button
                       className="gap-2 bg-primary hover:bg-primary/90 font-semibold"
-                      onClick={() => setWalletModalOpen(true)}
+                      onClick={handleConnect}
+                      disabled={isConnecting}
                     >
                       <Zap className="h-4 w-4" />
-                      Connect Wallet to Continue
+                      {isConnecting ? "Connecting..." : "Connect Wallet to Continue"}
                     </Button>
                   ) : (
                     <Button
@@ -767,7 +819,6 @@ export default function AppPage() {
       </Sheet>
 
       {/* Modals */}
-      <WalletModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
       <ConfirmBatchModal
         isOpen={confirmOpen}
         recipients={recipients}
@@ -777,6 +828,9 @@ export default function AppPage() {
       <TransactionProgressModal
         isOpen={progressOpen}
         onClose={handleProgressClose}
+        recipients={getRecipientsForTx()}
+        onExecute={handleExecuteBatch}
+        useMockTokens={true}
       />
       <SaveTemplateModal
         isOpen={saveModalOpen}
