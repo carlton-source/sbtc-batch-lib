@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Shield, Radio, Zap, ExternalLink, X, Copy, Check } from "lucide-react";
+import { CheckCircle2, Shield, Radio, Zap, ExternalLink, X, Copy, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { getExplorerUrl } from "@/lib/contract";
 
 type Step = "validate" | "sign" | "broadcast" | "done";
+type TransactionStatus = "pending" | "success" | "error";
 
 const steps: { id: Step; label: string; sublabel: string; icon: React.ElementType }[] = [
   { id: "validate", label: "Validate", sublabel: "Checking recipients...", icon: Shield },
@@ -13,22 +15,38 @@ const steps: { id: Step; label: string; sublabel: string; icon: React.ElementTyp
   { id: "done", label: "Done", sublabel: "Transaction confirmed!", icon: CheckCircle2 },
 ];
 
+export interface RecipientForTx {
+  address: string;
+  amount: number;
+}
+
 interface TransactionProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
+  recipients?: RecipientForTx[];
+  onExecute?: (recipients: RecipientForTx[]) => Promise<{ txId: string; success: boolean }>;
+  useMockTokens?: boolean;
 }
 
-const MOCK_TX_ID = "0x7a9f3c2b1e8d4a6f5c0b9e3d2a7f1c4b8e5d2a7...";
-
-export function TransactionProgressModal({ isOpen, onClose }: TransactionProgressModalProps) {
+export function TransactionProgressModal({ 
+  isOpen, 
+  onClose, 
+  recipients = [],
+  onExecute,
+  useMockTokens = true,
+}: TransactionProgressModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [isDone, setIsDone] = useState(false);
+  const [status, setStatus] = useState<TransactionStatus>("pending");
+  const [txId, setTxId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(MOCK_TX_ID);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (txId) {
+      navigator.clipboard.writeText(txId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
 
   function fireConfetti() {
@@ -50,24 +68,75 @@ export function TransactionProgressModal({ isOpen, onClose }: TransactionProgres
     confetti({ ...shared, origin: { x: 0.75, y: 0.65 }, angle: 120 });
   }
 
+  const executeTransaction = useCallback(async () => {
+    if (!onExecute || recipients.length === 0) {
+      // Fallback to mock behavior if no execute function provided
+      const timers: ReturnType<typeof setTimeout>[] = [];
+      timers.push(setTimeout(() => setCurrentStep(1), 1200));
+      timers.push(setTimeout(() => setCurrentStep(2), 2800));
+      timers.push(setTimeout(() => setCurrentStep(3), 4500));
+      timers.push(setTimeout(() => { 
+        setStatus("success"); 
+        setTxId("0x" + Math.random().toString(16).slice(2, 18) + "...");
+        fireConfetti(); 
+      }, 5500));
+      return () => timers.forEach(clearTimeout);
+    }
+
+    try {
+      // Step 1: Validate
+      setCurrentStep(0);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 2: Sign (wallet popup will appear here)
+      setCurrentStep(1);
+      
+      // Execute the transaction - this will trigger wallet popup
+      const result = await onExecute(recipients);
+      
+      // Step 3: Broadcast
+      setCurrentStep(2);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Step 4: Done
+      setCurrentStep(3);
+      setTxId(result.txId);
+      setStatus("success");
+      fireConfetti();
+      
+    } catch (err: any) {
+      console.error("Transaction error:", err);
+      setError(err?.message || "Transaction failed or was cancelled");
+      setStatus("error");
+    }
+  }, [onExecute, recipients]);
+
   useEffect(() => {
     if (!isOpen) {
+      // Reset state when modal closes
       setCurrentStep(0);
-      setIsDone(false);
+      setStatus("pending");
+      setTxId(null);
+      setError(null);
       return;
     }
 
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setCurrentStep(1), 1200));
-    timers.push(setTimeout(() => setCurrentStep(2), 2800));
-    timers.push(setTimeout(() => setCurrentStep(3), 4500));
-    timers.push(setTimeout(() => { setIsDone(true); fireConfetti(); }, 5500));
+    // Start transaction execution
+    executeTransaction();
+  }, [isOpen, executeTransaction]);
 
-    return () => timers.forEach(clearTimeout);
-  }, [isOpen]);
+  const handleRetry = () => {
+    setCurrentStep(0);
+    setStatus("pending");
+    setError(null);
+    setTxId(null);
+    executeTransaction();
+  };
 
   if (!isOpen) return null;
 
+  const isDone = status === "success";
+  const isError = status === "error";
   const currentStepIndex = currentStep;
 
   return (
@@ -80,7 +149,42 @@ export function TransactionProgressModal({ isOpen, onClose }: TransactionProgres
         <div className="h-px w-full bg-gradient-to-r from-primary/0 via-primary to-gold/50" />
 
         <div className="p-6">
-          {isDone ? (
+          {isError ? (
+            /* Error state */
+            <div className="text-center">
+              <div className="flex justify-end mb-2">
+                <button onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex justify-center mb-4">
+                <div className="relative h-16 w-16 flex items-center justify-center rounded-full bg-destructive/10 border border-destructive/30">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold mb-1 text-foreground">Transaction Failed</h2>
+              <p className="text-muted-foreground text-sm mb-5">{error || "Something went wrong"}</p>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-border/60 hover:bg-surface-3"
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1 bg-primary hover:bg-primary/90 gap-2" 
+                  onClick={handleRetry}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : isDone ? (
             /* Success state */
             <div className="text-center">
               <div className="flex justify-end mb-2">
@@ -133,28 +237,32 @@ export function TransactionProgressModal({ isOpen, onClose }: TransactionProgres
               <p className="text-muted-foreground text-sm mb-5">Your batch transaction was broadcast successfully</p>
 
               {/* TX ID */}
-              <div className="rounded-lg bg-surface-3 border border-border/40 p-3 mb-5 text-left">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-muted-foreground">Transaction ID</p>
-                  <button
-                    onClick={handleCopy}
-                    className="rounded p-1 hover:bg-surface-2 transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                  </button>
+              {txId && (
+                <div className="rounded-lg bg-surface-3 border border-border/40 p-3 mb-5 text-left">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-muted-foreground">Transaction ID</p>
+                    <button
+                      onClick={handleCopy}
+                      className="rounded p-1 hover:bg-surface-2 transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    </button>
+                  </div>
+                  <p className="font-mono text-xs shimmer-gold truncate">{txId}</p>
                 </div>
-                <p className="font-mono text-xs shimmer-gold truncate">{MOCK_TX_ID}</p>
-              </div>
+              )}
 
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1 border-border/60 hover:bg-surface-3 gap-2"
-                  onClick={() => window.open(`https://explorer.hiro.so/txid/${MOCK_TX_ID}?chain=mainnet`, "_blank")}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  View on Explorer
-                </Button>
+                {txId && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-border/60 hover:bg-surface-3 gap-2"
+                    onClick={() => window.open(getExplorerUrl(txId), "_blank")}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View on Explorer
+                  </Button>
+                )}
                 <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={onClose}>
                   Send Another Batch
                 </Button>
