@@ -1,0 +1,30 @@
+{
+  "name": "sbtc-batch-lib",
+  "version": "1.0.0",
+  "description": "sBTC Batch Transfer Library - batch multiple sBTC transfers in one transaction",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:report": "vitest run -- --coverage --costs",
+    "test:watch": "chokidar \"tests/**/*.ts\" \"contracts/**/*.clar\" -c \"npm run test:report\"",
+    "deploy:testnet": "npx ts-node scripts/deploy-testnet.ts",
+    "test:testnet": "npx ts-node scripts/test-testnet.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@stacks/clarinet-sdk": "^3.9.0",
+    "@stacks/network": "^7.0.0",
+    "@stacks/transactions": "^7.2.0",
+    "@stacks/wallet-sdk": "^7.0.0",
+    "@types/node": "^24.4.0",
+    "chokidar-cli": "^3.0.0",
+    "vitest": "^4.0.7",
+    "vitest-environment-clarinet": "^3.0.0"
+  },
+  "devDependencies": {
+    "toml": "^3.0.0",
+    "yaml": "^2.8.2"
+  }
+}

@@ -1,0 +1,37 @@
+[project]
+name = 'sbtc-batch-lib'
+description = 'sBTC Batch Transfer Library - batch multiple token transfers in one transaction'
+authors = []
+telemetry = true
+cache_dir = './.cache'
+
+[[project.requirements]]
+contract_id = 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token'
+
+[[project.requirements]]
+contract_id = 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard'
+
+[contracts.mock-sbtc]
+path = 'contracts/mock-sbtc.clar'
+clarity_version = 4
+epoch = 'latest'
+
+[contracts.batch-transfer]
+path = 'contracts/batch-transfer.clar'
+clarity_version = 4
+epoch = 'latest'
+
+[repl.analysis]
+passes = ['check_checker']
+
+[repl.analysis.lints]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
