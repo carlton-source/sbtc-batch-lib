@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Main violet gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#5b21b6"/>
+    </linearGradient>
+    <!-- Gold accent gradient -->
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <!-- Subtle inner shadow -->
+    <radialGradient id="innerGlow" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#5b21b6" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Drop shadow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    <!-- Glow for gold element -->
+    <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Clip for rounded square -->
+    <clipPath id="roundedSquare">
+      <rect width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+  </defs>
+
+  <!-- Rounded square background -->
+  <g clip-path="url(#roundedSquare)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#innerGlow)"/>
+
+    <!-- Subtle grid pattern for texture -->
+    <g opacity="0.04" stroke="#fff" stroke-width="1">
+      <line x1="128" y1="0" x2="128" y2="512"/>
+      <line x1="256" y1="0" x2="256" y2="512"/>
+      <line x1="384" y1="0" x2="384" y2="512"/>
+      <line x1="0" y1="128" x2="512" y2="128"/>
+      <line x1="0" y1="256" x2="512" y2="256"/>
+      <line x1="0" y1="384" x2="512" y2="384"/>
+    </g>
+
+    <!-- Three stacked payment cards — batch metaphor -->
+    <g filter="url(#shadow)">
+      <!-- Card 3 (bottom, most receded) -->
+      <rect x="136" y="234" width="260" height="72" rx="14" fill="#fff" opacity="0.12"/>
+
+      <!-- Card 2 (middle) -->
+      <rect x="120" y="206" width="280" height="72" rx="16" fill="#fff" opacity="0.2"/>
+
+      <!-- Card 1 (top, most prominent) -->
+      <rect x="104" y="176" width="300" height="76" rx="18" fill="#fff" opacity="0.95"/>
+
+      <!-- Top card interior details -->
+      <!-- Recipient avatar placeholder -->
+      <circle cx="144" cy="214" r="16" fill="url(#bg)" opacity="0.8"/>
+      <rect x="120" y="236" width="48" height="3" rx="1.5" fill="url(#bg)" opacity="0.25"/>
+
+      <!-- Address text lines -->
+      <rect x="172" y="200" width="140" height="8" rx="4" fill="#7c3aed" opacity="0.3"/>
+      <rect x="172" y="216" width="100" height="6" rx="3" fill="#7c3aed" opacity="0.15"/>
+
+      <!-- Amount badge with gold -->
+      <rect x="328" y="198" width="60" height="28" rx="14" fill="url(#gold)"/>
+      <text x="358" y="217" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="14" font-weight="700" fill="#1a1a2e">0.05</text>
+    </g>
+
+    <!-- Bold "B" lettermark -->
+    <g transform="translate(256, 340)" filter="url(#shadow)">
+      <text x="0" y="0" text-anchor="middle" dominant-baseline="central"
+            font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif"
+            font-size="120" font-weight="900" fill="#fff" letter-spacing="-4">
+        B
+      </text>
+    </g>
+
+    <!-- Animated-style send arrows (static but suggesting motion) -->
+    <g transform="translate(370, 110)" filter="url(#goldGlow)">
+      <!-- Arrow 1 -->
+      <path d="M0 30 L30 15 L0 0 L8 15Z" fill="url(#gold)" opacity="0.9"/>
+      <!-- Arrow 2 (offset) -->
+      <path d="M-16 48 L14 33 L-16 18 L-8 33Z" fill="url(#gold)" opacity="0.55"/>
+      <!-- Arrow 3 -->
+      <path d="M-32 66 L-2 51 L-32 36 L-24 51Z" fill="url(#gold)" opacity="0.3"/>
+    </g>
+
+    <!-- sBTC badge in corner -->
+    <g transform="translate(396, 396)">
+      <circle cx="0" cy="0" r="42" fill="#0f0f1a" opacity="0.85"/>
+      <circle cx="0" cy="0" r="42" fill="none" stroke="url(#gold)" stroke-width="3" opacity="0.7"/>
+      <text x="0" y="2" text-anchor="middle" dominant-baseline="central"
+            font-family="system-ui,-apple-system,sans-serif"
+            font-size="28" font-weight="800" fill="#f59e0b">₿</text>
+    </g>
+
+    <!-- Subtle border ring -->
+    <rect width="512" height="512" rx="112" ry="112" fill="none" stroke="#a78bfa" stroke-width="3" opacity="0.25"/>
+  </g>
+</svg>

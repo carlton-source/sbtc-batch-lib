@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#5b21b6"/>
+    </linearGradient>
+  </defs>
+  <rect width="16" height="16" rx="3.5" fill="url(#bg)"/>
+  <!-- Simplified batch lines -->
+  <rect x="3" y="3" width="10" height="2.5" rx="1.25" fill="#fff" opacity="0.9"/>
+  <rect x="4" y="7" width="9" height="2" rx="1" fill="#fff" opacity="0.4"/>
+  <!-- B letterform hint -->
+  <text x="8" y="14.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="5" font-weight="900" fill="#fff" opacity="0.8">B</text>
+  <!-- Gold dot -->
+  <circle cx="13" cy="3" r="1.5" fill="#fbbf24"/>
+</svg>
